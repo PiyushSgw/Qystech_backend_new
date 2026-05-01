@@ -11,7 +11,7 @@ async function createDatabase() {
 
     let pool;
     if (isWindowsAuth) {
-      const msnodesql = require('msnodesqlv8');
+      const msnodesql = require('mssql');
       const connectionString = `Server=${process.env.DB_SERVER};Database=master;Trusted_Connection=Yes;Driver={ODBC Driver 17 for SQL Server}`;
       
       pool = await new Promise((resolve, reject) => {

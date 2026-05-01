@@ -1,7 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const sql = require('mssql/msnodesqlv8');
+const sql = require('mssql/mssql');
 
 const isWindowsAuth = (process.env.DB_AUTH_TYPE || '').toLowerCase() === 'windows';
 
