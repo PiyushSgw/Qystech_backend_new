@@ -1,108 +1,57 @@
-const sql = require('mssql/mssql');
+const { Pool } = require('pg');
 require('dotenv').config();
 
-const isWindowsAuth = (process.env.DB_AUTH_TYPE || '').toLowerCase() === 'windows';
-
-let config;
-if (isWindowsAuth) {
-  config = {
-    connectionString: `Server=${process.env.DB_SERVER};Database=${process.env.DB_DATABASE};Trusted_Connection=Yes;Driver={ODBC Driver 17 for SQL Server}`,
-  };
-} else {
-  config = {
-    server: process.env.DB_SERVER,
-    database: process.env.DB_DATABASE,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    options: {
-      encrypt: process.env.DB_ENCRYPT === 'true',
-      trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true',
-      enableArithAbort: true,
-    },
-    pool: {
-      max: 10,
-      min: 0,
-      idleTimeoutMillis: 30000
-    }
-  };
-}
-
-let pool;
-
-const getConnection = async () => {
-  if (!pool) {
-    pool = await sql.connect(config);
-  }
-  return pool;
+const config = {
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT) || 5433,
+  database: process.env.DB_DATABASE || 'qsystech_db',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'admin',
 };
 
-const executeQuery = async (query, params = {}) => {
+const pool = new Pool(config);
+
+const executeQuery = async (query, params = []) => {
   try {
-    const pool = await getConnection();
-    const request = pool.request();
-    
-    // Add parameters to request
-    Object.keys(params).forEach(key => {
-      request.input(key, params[key]);
-    });
-    
-    const result = await request.query(query);
-    return result.recordset;
+    const result = await pool.query(query, params);
+    return result.rows;
   } catch (error) {
-    console.error('SQL Error:', error);
+    console.error('PostgreSQL Error:', error);
     throw error;
   }
 };
 
-const executeNonQuery = async (query, params = {}) => {
+const executeNonQuery = async (query, params = []) => {
   try {
-    const pool = await getConnection();
-    const request = pool.request();
-    
-    Object.keys(params).forEach(key => {
-      request.input(key, params[key]);
-    });
-    
-    const result = await request.query(query);
-    return result.rowsAffected[0];
+    const result = await pool.query(query, params);
+    return result.rowCount;
   } catch (error) {
-    console.error('SQL Error:', error);
+    console.error('PostgreSQL Error:', error);
     throw error;
   }
 };
 
-const executeScalar = async (query, params = {}) => {
+const executeScalar = async (query, params = []) => {
   try {
-    const pool = await getConnection();
-    const request = pool.request();
-    
-    Object.keys(params).forEach(key => {
-      request.input(key, params[key]);
-    });
-    
-    const result = await request.query(query);
-    if (result.recordset && result.recordset.length > 0) {
-      return result.recordset[0];
+    const result = await pool.query(query, params);
+    if (result.rows && result.rows.length > 0) {
+      return result.rows[0];
     }
     return null;
   } catch (error) {
-    console.error('SQL Error:', error);
+    console.error('PostgreSQL Error:', error);
     throw error;
   }
 };
 
 const closeConnection = async () => {
-  if (pool) {
-    await pool.close();
-    pool = null;
-  }
+  await pool.end();
 };
 
 module.exports = {
-  getConnection,
   executeQuery,
   executeNonQuery,
   executeScalar,
   closeConnection,
-  sql
+  pool
 };
